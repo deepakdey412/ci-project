@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/")
 public class MsgController {
+
     @GetMapping
     public String hello() {
         return """
@@ -62,7 +63,7 @@ public class MsgController {
                         <h1>🚀 Spring Boot CI/CD App</h1>
 
                         <div class="box">
-                            <p>Welcome! Your deployment is successful 🎉</p>
+                            <p>Welcome.. Your deployment is successful 🎉</p>
                             <p>This page is served directly from Java without Thymeleaf</p>
                         </div>
 
