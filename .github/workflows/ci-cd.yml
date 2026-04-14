@@ -1,4 +1,83 @@
-name: Java CI/CD Pipeline
+#name: Docker CI/CD Pipeline
+#
+#on:
+#  push:
+#    branches: ["main"]
+#
+#jobs:
+#  build-and-deploy:
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      # 1. Checkout code
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      # 2. Setup Java
+#      - name: Set up JDK 17
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: 'temurin'
+#          java-version: '17'
+#          cache: maven
+#
+#      # 3. Build JAR
+#      - name: Build with Maven
+#        run: mvn clean install
+#
+#      # 4. Configure AWS credentials
+#      - name: Configure AWS credentials
+#        uses: aws-actions/configure-aws-credentials@v4
+#        with:
+#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+#          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+#          aws-region: ap-south-1
+#
+#      # 5. Login to ECR
+#      - name: Login to Amazon ECR
+#        uses: aws-actions/amazon-ecr-login@v2
+#
+#      # 6. Build Docker Image
+#      - name: Build Docker image
+#        run: docker build -t demo-app .
+#
+#      # 7. Tag Image
+#      - name: Tag Docker image
+#        run: docker tag demo-app:latest ${{ secrets.ECR_REPO }}
+#
+#      # 8. Push to ECR
+#      - name: Push to ECR
+#        run: docker push ${{ secrets.ECR_REPO }}
+#
+#      # 9. Deploy to EC2
+#      - name: Deploy on EC2
+#        uses: appleboy/ssh-action@v0.1.10
+#        with:
+#          host: ${{ secrets.EC2_HOST }}
+#          username: ${{ secrets.EC2_USER }}
+#          key: ${{ secrets.EC2_KEY }}
+#          script: |
+#            echo "Login to ECR"
+#            aws ecr get-login-password --region ap-south-1 \
+#            | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO }}
+#
+#            echo "Pull latest image"
+#            docker pull ${{ secrets.ECR_REPO }}
+#
+#            echo "Stop old container"
+#            docker stop demo-container || true
+#            docker rm demo-container || true
+#
+#            echo "Run new container"
+#            docker run -d -p 8080:8080 --name demo-container ${{ secrets.ECR_REPO }}
+#
+#            echo "Deployment completed 🚀"
+#
+#      # 10. Success message
+#      - name: Success
+#        run: echo "🚀 Docker CI/CD Done!"
+
+name: Docker CI/CD Pipeline
 
 on:
   push:
@@ -21,22 +100,35 @@ jobs:
           java-version: '17'
           cache: maven
 
-      # 3. Build + Test + JAR
+      # 3. Build JAR
       - name: Build with Maven
         run: mvn clean install
 
-      # 4. Copy JAR to EC2
-      - name: Copy JAR to EC2
-        uses: appleboy/scp-action@v0.1.4
+      # 4. Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          source: "target/*.jar"
-          target: "/home/ubuntu/"
-          strip_components: 1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ap-south-1
 
-      # 5. Deploy on EC2 (SAFE VERSION)
+      # 5. Login to ECR
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 6. Build Docker Image
+      - name: Build Docker image
+        run: docker build -t demo-app .
+
+      # 7. Tag Image
+      - name: Tag Docker image
+        run: docker tag demo-app:latest ${{ secrets.ECR_REPO }}
+
+      # 8. Push to ECR
+      - name: Push to ECR
+        run: docker push ${{ secrets.ECR_REPO }}
+
+      # 9. Deploy to EC2
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -44,24 +136,22 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            echo "Stopping old app safely"
+            echo "Login to ECR"
+            aws ecr get-login-password --region ap-south-1 \
+            | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO }}
 
-            PID=$(ps aux | grep DemoApp | grep -v grep | awk '{print $2}')
-            if [ -n "$PID" ]; then
-              kill -9 $PID
-              echo "Old app stopped"
-            else
-              echo "No running app"
-            fi
+            echo "Pull latest image"
+            docker pull ${{ secrets.ECR_REPO }}
 
-            echo "Cleaning old files"
-            rm -rf /home/ubuntu/target
+            echo "Stop old container"
+            docker stop demo-container || true
+            docker rm demo-container || true
 
-            echo "Starting new app"
-            nohup java -jar /home/ubuntu/DemoApp-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+            echo "Run new container"
+            docker run -d -p 8080:8080 --name demo-container ${{ secrets.ECR_REPO }}
 
             echo "Deployment completed 🚀"
 
-      # 6. Success message
-      - name: Deployed success message
-        run: echo "🚀 Deployment Successful!"
+      # 10. Success message
+      - name: Success
+        run: echo "🚀 Docker CI/CD Done!"
