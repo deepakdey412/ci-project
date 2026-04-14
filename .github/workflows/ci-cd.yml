@@ -25,27 +25,33 @@ jobs:
       - name: Build with Maven
         run: mvn clean install
 
-      # 4. Copy JAR to EC2
+      # 4. Copy JAR to EC2 ✅ (VERY IMPORTANT)
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          source: "target/*.jar" # this line create the targetfolder also
+          source: "target/*.jar"
           target: "/home/ubuntu/"
+          strip_components: 1
 
-      # 5. Deploy (Run app on EC2)
-      - name: Run the .jar on EC2 (deploy app)
+      # 5. Deploy on EC2 ✅
+      - name: Deploy on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            pkill -f 'java -jar' || true
-            nohup java -jar /home/ubuntu/target/*.jar > app.log 2>&1 &
+            echo "Stopping old app"
+            pkill -f 'DemoApp' || true
 
-      # Deployed success message
+            echo "Starting new app"
+            nohup java -jar /home/ubuntu/DemoApp-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+
+            echo "Deployment completed 🚀"
+
+      # 6. Success message
       - name: Deployed success message
         run: echo "Deployed successfully 🚀"
