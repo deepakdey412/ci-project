@@ -25,7 +25,7 @@ jobs:
       - name: Build with Maven
         run: mvn clean install
 
-      # 4. Copy JAR to EC2 ✅ (VERY IMPORTANT)
+      # 4. Copy JAR to EC2
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -36,7 +36,7 @@ jobs:
           target: "/home/ubuntu/"
           strip_components: 1
 
-      # 5. Deploy on EC2 ✅
+      # 5. Deploy on EC2 (SAFE VERSION)
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -44,8 +44,18 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            echo "Stopping old app"
-            pkill -f 'DemoApp' || true
+            echo "Stopping old app safely"
+
+            PID=$(ps aux | grep DemoApp | grep -v grep | awk '{print $2}')
+            if [ -n "$PID" ]; then
+              kill -9 $PID
+              echo "Old app stopped"
+            else
+              echo "No running app"
+            fi
+
+            echo "Cleaning old files"
+            rm -rf /home/ubuntu/target
 
             echo "Starting new app"
             nohup java -jar /home/ubuntu/DemoApp-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
@@ -54,4 +64,4 @@ jobs:
 
       # 6. Success message
       - name: Deployed success message
-        run: echo "Deployed successfully 🚀"
+        run: echo "🚀 Deployment Successful!"
