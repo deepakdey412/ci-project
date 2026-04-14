@@ -48,4 +48,4 @@ jobs:
 
       # Deployed success message
       - name: Deployed success message
-        uses: echo "Deployed success..!"
+        run: echo "Deployed successfully 🚀"
