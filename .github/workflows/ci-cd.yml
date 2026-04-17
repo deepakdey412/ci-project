@@ -57,7 +57,7 @@ jobs:
         run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      # 🔥 8. Get EC2 IP from S3
+      # 8. Get EC2 IP from S3
       - name: Fetch EC2 IP from S3
         run: |
           aws s3 cp s3://$S3_BUCKET/ec2-ip.txt .
