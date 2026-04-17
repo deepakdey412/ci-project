@@ -95,11 +95,11 @@ jobs:
               sudo ./aws/install
             fi
 
-            echo "🔐 Login to ECR"
+            echo "Login to ECR"
             aws ecr get-login-password --region ap-south-1 \
             | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
 
-            echo "⬇️ Pull latest image"
+            echo "⬇Pull latest image"
             docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
 
             echo " Stop old container"
