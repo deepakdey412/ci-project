@@ -65,7 +65,7 @@ jobs:
           echo "EC2_IP=$IP" >> $GITHUB_ENV
           echo "Using EC2 IP: $IP"
 
-      # 🚀 9. Deploy to EC2
+      #  9. Deploy to EC2
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -102,13 +102,13 @@ jobs:
             echo "⬇️ Pull latest image"
             docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
 
-            echo "🛑 Stop old container"
+            echo " Stop old container"
             docker stop demo-container || true
 
             echo "🗑 Remove old container"
             docker rm demo-container || true
 
-            echo "🚀 Run new container"
+            echo "Run new container"
             docker run -d -p 8080:8080 --name demo-container \
             ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
 
