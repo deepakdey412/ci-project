@@ -17,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Java setup
+      # 2. Setup Java
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -29,7 +29,7 @@ jobs:
       - name: Build with Maven
         run: mvn clean package -DskipTests
 
-      # 4. AWS Login
+      # 4. AWS Credentials (for GitHub runner)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -37,26 +37,26 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # 5. Login ECR
+      # 5. Login to ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 6. Build Image
+      # 6. Build Docker Image
       - name: Build Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
 
-      # 7. Push Image
+      # 7. Push Docker Image
       - name: Push Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      # 8. Deploy
+      # 8. Deploy to EC2
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -65,7 +65,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             set -e
-            set -x   # debug mode
+            set -x
 
             echo "🔧 Install Docker if missing"
             if ! command -v docker &> /dev/null
@@ -85,6 +85,11 @@ jobs:
               unzip -o awscliv2.zip
               sudo ./aws/install
             fi
+
+            echo "🔐 Set AWS credentials (temporary fix)"
+            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY }}
+            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_KEY }}
+            export AWS_DEFAULT_REGION=${{ env.AWS_REGION }}
 
             echo "🔐 Login to ECR"
             aws ecr get-login-password --region ${{ env.AWS_REGION }} \
