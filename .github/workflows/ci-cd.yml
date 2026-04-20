@@ -108,7 +108,4 @@ jobs:
             sudo docker run -d -p 8080:8080 --restart=always --name demo-container \
             ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
 
-            echo "⏳ Waiting for app..."
-            sleep 10
-
             echo "✅ Deployment completed"
