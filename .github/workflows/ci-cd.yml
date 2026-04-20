@@ -13,11 +13,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout code
+      # 1. Checkout
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Setup Java
+      # 2. Java setup
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -29,7 +29,7 @@ jobs:
       - name: Build with Maven
         run: mvn clean package -DskipTests
 
-      # 4. Configure AWS credentials
+      # 4. AWS Login
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -37,26 +37,26 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # 5. Login to ECR
+      # 5. Login ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 6. Build Docker Image
+      # 6. Build Image
       - name: Build Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
 
-      # 7. Push Docker Image
+      # 7. Push Image
       - name: Push Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      # 8. Deploy to EC2
+      # 8. Deploy
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -65,42 +65,48 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             set -e
+            set -x   # debug mode
 
             echo "🔧 Install Docker if missing"
             if ! command -v docker &> /dev/null
             then
-              sudo apt update
+              sudo apt update -y
               sudo apt install docker.io -y
               sudo systemctl start docker
               sudo systemctl enable docker
-              sudo usermod -aG docker ubuntu
             fi
 
             echo "🔧 Install AWS CLI if missing"
             if ! command -v aws &> /dev/null
             then
-              sudo apt update
+              sudo apt update -y
               sudo apt install unzip curl -y
               curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-              unzip awscliv2.zip
+              unzip -o awscliv2.zip
               sudo ./aws/install
             fi
 
-            echo "Login to ECR"
+            echo "🔐 Login to ECR"
             aws ecr get-login-password --region ${{ env.AWS_REGION }} \
-            | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+            | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
 
             echo "⬇ Pull latest image"
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
+            sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
 
-            echo "Stop old container"
-            docker stop demo-container || true
+            echo "🛑 Stop old container"
+            sudo docker stop demo-container || true
 
-            echo "Remove old container"
-            docker rm demo-container || true
+            echo "🗑 Remove old container"
+            sudo docker rm demo-container || true
 
-            echo "Run new container"
-            docker run -d -p 8080:8080 --name demo-container \
+            echo "🚀 Run new container"
+            sudo docker run -d -p 8080:8080 --restart=always --name demo-container \
             ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
+
+            echo "⏳ Waiting for app..."
+            sleep 10
+
+            echo "🔍 Health check"
+            curl -f http://localhost:8080 || exit 1
 
             echo "✅ Deployment completed"
